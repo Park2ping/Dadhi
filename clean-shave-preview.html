@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clean Shave Preview</title>
+<style>
+:root{--bg:#e9eef1;--card:#f8fafb;--ink:#12202a;--muted:#5b6b76;--line:#cdd8de;--acc:#1b6a8c;--accfg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a21;--card:#17252e;--ink:#e8f0f4;--muted:#93a6b2;--line:#2b3e49;--acc:#6cc0e0;--accfg:#07222e}}
+:root[data-theme="dark"]{--bg:#0f1a21;--card:#17252e;--ink:#e8f0f4;--muted:#93a6b2;--line:#2b3e49;--acc:#6cc0e0;--accfg:#07222e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 28px}
+h1{font:600 1.7rem/1.15 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+.stage{position:relative;background:#0b1217;border-radius:50% 50% 22px 22px/16% 16% 22px 22px;overflow:hidden;border:3px solid var(--line)}
+.stage canvas{display:block;width:100%;height:auto}
+#ov{position:absolute;inset:0;pointer-events:none}
+#start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:#e8f0f4;background:rgba(11,18,23,.82)}
+#msg{margin:0;font-size:.95rem;max-width:30ch}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:11px 14px;min-height:44px}
+button.main{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600;padding:12px 22px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;gap:10px;margin:14px 0}
+.row button{flex:1}
+#cmp{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 16px 14px}
+.ctl{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;padding:7px 0}
+.ctl label{font-size:.92rem}
+input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
+.skin{display:flex;align-items:center;gap:10px;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:6px;font-size:.9rem;color:var(--muted)}
+#sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none}
+.skin button{margin-left:auto;min-height:36px;padding:6px 12px}
+.chk{display:flex;align-items:center;gap:8px;padding-top:8px;font-size:.9rem}
+.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.tips{color:var(--muted);font-size:.88rem;margin:14px 2px 0}
+#modal{position:fixed;inset:0;z-index:9;background:rgba(5,10,14,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));color:#e8f0f4;text-align:center}
+#modal img{max-width:100%;max-height:68vh;border-radius:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clean Shave Preview</h1>
+  <p class="sub">See your face without a moustache and beard. Runs on your device, nothing is uploaded.</p>
+
+  <div class="stage">
+    <canvas id="cv" width="480" height="640"></canvas>
+    <canvas id="ov" width="480" height="640"></canvas>
+    <div id="start">
+      <p id="msg">Tap Start, allow the camera, then fit your face inside the oval.</p>
+      <button class="main" id="go">Start camera</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="cmp">Hold to see original</button>
+    <button id="snap">Snapshot</button>
+    <button id="flip">Flip camera</button>
+  </div>
+
+  <div class="panel">
+    <div class="ctl"><label for="pos">Position</label><input id="pos" type="range" min="-12" max="12" value="0"></div>
+    <div class="ctl"><label for="w">Width</label><input id="w" type="range" min="70" max="140" value="100"></div>
+    <div class="ctl"><label for="h">Height</label><input id="h" type="range" min="70" max="140" value="100"></div>
+    <div class="ctl"><label for="str">Smoothness</label><input id="str" type="range" min="40" max="100" value="85"></div>
+    <div class="skin"><span id="sw"></span><span id="skinTxt">Skin tone: auto</span><button id="auto" hidden>Use auto</button></div>
+    <label class="chk"><input id="guides" type="checkbox" checked> Show guides</label>
+  </div>
+
+  <p class="tips">Fit your face in the white oval. Then use the sliders so the blue outline covers your moustache and beard. For a closer skin match, tap a clean cheek on the video. Keep your mouth closed and your face evenly lit.</p>
+</div>
+
+<div id="modal" hidden>
+  <img id="shot" alt="Your snapshot">
+  <p>Press and hold the photo to save it.</p>
+  <button class="main" id="close">Close</button>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d',{willReadFrequently:true}),octx=ov.getContext('2d');
+const vid=document.createElement('video');vid.playsInline=true;vid.muted=true;
+let stream=null,facing='user',skin=[200,160,140],inited=false,manual=false,showOrig=false,frame=0;
+const P={pos:0,w:1,h:1,str:.85};
+
+function rd(){P.pos=$('#pos').value/100;P.w=$('#w').value/100;P.h=$('#h').value/100;P.str=$('#str').value/100}
+document.querySelectorAll('input[type=range]').forEach(e=>e.addEventListener('input',rd));rd();
+
+async function start(){
+  const msg=$('#msg');
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:720}},audio:false});
+    vid.srcObject=stream;await vid.play();
+    $('#start').hidden=true;
+  }catch(e){
+    $('#start').hidden=false;$('#go').textContent='Try again';
+    msg.textContent=(e&&e.name==='NotAllowedError')
+      ?'Camera is blocked. Allow camera access, or open this page in your browser (Chrome or Safari) and try again.'
+      :'No camera found, or it is in use by another app.';
+  }
+}
+$('#go').onclick=start;
+$('#flip').onclick=()=>{facing=facing==='user'?'environment':'user';inited=false;if(stream)start()};
+
+function geom(W,H){const u=Math.min(W,H);return{u,cx:W/2,cy:H*.45+u*(.235+P.pos),rx:u*.27*P.w,ry:u*.19*P.h}}
+
+function patch(x,y){
+  x=Math.max(4,Math.min(cv.width-5,x|0));y=Math.max(4,Math.min(cv.height-5,y|0));
+  const d=ctx.getImageData(x-4,y-4,9,9).data;let r=0,g=0,b=0;
+  for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2]}
+  const n=d.length/4;return[r/n,g/n,b/n];
+}
+function sampleSkin(W,H,u){
+  if(manual)return;
+  const a=patch(W/2-u*.17,H*.45),b=patch(W/2+u*.17,H*.45),m=[0,1,2].map(i=>(a[i]+b[i])/2);
+  if(!inited){skin=m;inited=true}else for(let i=0;i<3;i++)skin[i]+=(m[i]-skin[i])*.12;
+}
+
+function blur(A,w,h,r){
+  const T=new Float32Array(A.length),n=2*r+1,cl=(v,m)=>v<0?0:v>m?m:v;
+  for(let y=0;y<h;y++){const o=y*w;let s=0;for(let x=-r;x<=r;x++)s+=A[o+cl(x,w-1)];
+    for(let x=0;x<w;x++){T[o+x]=s/n;s+=A[o+cl(x+r+1,w-1)]-A[o+cl(x-r,w-1)]}}
+  for(let x=0;x<w;x++){let s=0;for(let y=-r;y<=r;y++)s+=T[cl(y,h-1)*w+x];
+    for(let y=0;y<h;y++){A[y*w+x]=s/n;s+=T[cl(y+r+1,h-1)*w+x]-T[cl(y-r,h-1)*w+x]}}
+}
+
+function shave(W,H,g){
+  const x0=Math.max(0,Math.floor(g.cx-g.rx)),y0=Math.max(0,Math.floor(g.cy-g.ry)),
+        x1=Math.min(W,Math.ceil(g.cx+g.rx)),y1=Math.min(H,Math.ceil(g.cy+g.ry)),w=x1-x0,h=y1-y0;
+  if(w<8||h<8)return;
+  const img=ctx.getImageData(x0,y0,w,h),d=img.data,A=new Float32Array(w*h);
+  const sr=skin[0],sg=skin[1],sb=skin[2],sY=.299*sr+.587*sg+.114*sb,sRG=sr-sg;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const nx=(x0+x-g.cx)/g.rx,ny=(y0+y-g.cy)/g.ry,dd=Math.sqrt(nx*nx+ny*ny);
+    if(dd>=1)continue;
+    const i=(y*w+x)*4,r=d[i],gg=d[i+1],b=d[i+2],Y=.299*r+.587*gg+.114*b;
+    let a=Math.min(1,Math.max(0,((sY-Y)/sY-.1)/.22));            // dark = hair
+    a*=1-Math.min(1,Math.max(0,((r-gg)-sRG-6)/22));              // keep reddish lips
+    A[y*w+x]=a*Math.min(1,(1-dd)/.3);                            // soft edge
+  }
+  blur(A,w,h,3);blur(A,w,h,3);
+  const k=P.str*1.9;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const a=Math.min(1,A[y*w+x]*k);if(a<.01)continue;
+    const i=(y*w+x)*4,t=(y0+y-g.cy)/g.ry,sh=1-.07*Math.max(0,t),
+          n=((((x0+x)*73856093)^((y0+y)*19349663))&255)/255*6-3;
+    d[i]+=(sr*sh+n-d[i])*a;d[i+1]+=(sg*sh+n-d[i+1])*a;d[i+2]+=(sb*sh+n-d[i+2])*a;
+  }
+  ctx.putImageData(img,x0,y0);
+}
+
+function outline(W,H,g){
+  octx.clearRect(0,0,W,H);
+  if(!$('#guides').checked)return;
+  octx.lineWidth=2;octx.setLineDash([8,6]);
+  octx.strokeStyle='rgba(255,255,255,.75)';octx.beginPath();octx.ellipse(W/2,H*.45,g.u*.32,g.u*.42,0,0,7);octx.stroke();
+  octx.strokeStyle='#6cc0e0';octx.beginPath();octx.ellipse(g.cx,g.cy,g.rx,g.ry,0,0,7);octx.stroke();
+}
+
+function loop(){
+  if(stream&&vid.readyState>=2&&vid.videoWidth){
+    const vw=vid.videoWidth,vh=vid.videoHeight,W=Math.min(vw,560),H=Math.round(W*vh/vw);
+    if(cv.width!==W||cv.height!==H){cv.width=ov.width=W;cv.height=ov.height=H}
+    ctx.save();
+    if(facing==='user'){ctx.translate(W,0);ctx.scale(-1,1)}
+    ctx.drawImage(vid,0,0,W,H);ctx.restore();
+    const g=geom(W,H);
+    sampleSkin(W,H,g.u);
+    if(!showOrig)shave(W,H,g);
+    outline(W,H,g);
+    if(++frame%10===0)$('#sw').style.background=`rgb(${skin.map(Math.round)})`;
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+
+cv.addEventListener('click',e=>{
+  if(!stream)return;
+  const r=cv.getBoundingClientRect();
+  skin=patch((e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height);
+  manual=true;$('#skinTxt').textContent='Skin tone: picked';$('#auto').hidden=false;
+});
+$('#auto').onclick=()=>{manual=false;inited=false;$('#skinTxt').textContent='Skin tone: auto';$('#auto').hidden=true};
+
+const cmp=$('#cmp'),on=()=>{showOrig=true},off=()=>{showOrig=false};
+cmp.addEventListener('pointerdown',on);
+['pointerup','pointerleave','pointercancel'].forEach(t=>cmp.addEventListener(t,off));
+cmp.addEventListener('contextmenu',e=>e.preventDefault());
+
+$('#snap').onclick=()=>{if(!stream)return;$('#shot').src=cv.toDataURL('image/jpeg',.92);$('#modal').hidden=false};
+$('#close').onclick=()=>{$('#modal').hidden=true};
+</script>
+</body>
+</html>
