@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clean Shave Preview</title>
+<style>
+:root{--bg:#e9eef1;--card:#f8fafb;--ink:#12202a;--muted:#5b6b76;--line:#cdd8de;--acc:#1b6a8c;--accfg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a21;--card:#17252e;--ink:#e8f0f4;--muted:#93a6b2;--line:#2b3e49;--acc:#6cc0e0;--accfg:#07222e}}
+:root[data-theme="dark"]{--bg:#0f1a21;--card:#17252e;--ink:#e8f0f4;--muted:#93a6b2;--line:#2b3e49;--acc:#6cc0e0;--accfg:#07222e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 28px}
+h1{font:600 1.7rem/1.15 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+.stage{position:relative;background:#0b1217;border-radius:50% 50% 22px 22px/16% 16% 22px 22px;overflow:hidden;border:3px solid var(--line)}
+.stage canvas{display:block;width:100%;height:auto}
+#ov{position:absolute;inset:0;pointer-events:none}
+#start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:#e8f0f4;background:rgba(11,18,23,.82)}
+#msg{margin:0;font-size:.95rem;max-width:30ch}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:11px 14px;min-height:44px}
+button.main{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600;padding:12px 22px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;gap:10px;margin:14px 0}
+.row button{flex:1}
+#cmp{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 16px 14px}
+.ctl{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;padding:7px 0}
+.ctl label{font-size:.92rem}
+input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
+.skin{display:flex;align-items:center;gap:10px;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:6px;font-size:.9rem;color:var(--muted)}
+#sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none}
+.skin button{margin-left:auto;min-height:36px;padding:6px 12px}
+.chk{display:flex;align-items:center;gap:8px;padding-top:8px;font-size:.9rem}
+.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.ai{font-size:.88rem;color:var(--muted);margin:12px 2px 0}
+.tips{color:var(--muted);font-size:.88rem;margin:14px 2px 0}
+#modal{position:fixed;inset:0;z-index:9;background:rgba(5,10,14,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));color:#e8f0f4;text-align:center}
+#modal img{max-width:100%;max-height:68vh;border-radius:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clean Shave Preview</h1>
+  <p class="sub">See your face without a moustache and beard. Runs on your device, nothing is uploaded.</p>
+
+  <div class="stage">
+    <canvas id="cv" width="480" height="640"></canvas>
+    <canvas id="ov" width="480" height="640"></canvas>
+    <div id="start">
+      <p id="msg">Tap Start, allow the camera, then fit your face inside the oval.</p>
+      <button class="main" id="go">Start camera</button>
+    </div>
+  </div>
+
+  <p class="ai" id="ai" hidden></p>
+  <div class="row">
+    <button id="cmp">Hold to see original</button>
+    <button id="snap">Snapshot</button>
+    <button id="flip">Flip camera</button>
+  </div>
+
+  <div class="panel">
+    <div class="ctl"><label for="pos">Position</label><input id="pos" type="range" min="-12" max="12" value="0"></div>
+    <div class="ctl"><label for="w">Width</label><input id="w" type="range" min="70" max="140" value="100"></div>
+    <div class="ctl"><label for="h">Height</label><input id="h" type="range" min="70" max="140" value="100"></div>
+    <div class="ctl"><label for="str">Smoothness</label><input id="str" type="range" min="40" max="100" value="85"></div>
+    <div class="skin"><span id="sw"></span><span id="skinTxt">Skin tone: auto</span><button id="auto" hidden>Use auto</button></div>
+    <label class="chk"><input id="guides" type="checkbox" checked> Show guides</label>
+  </div>
+
+  <p class="tips">Face the camera with a closed mouth in even light. Once the face AI loads, the blue outline follows your face by itself. Use the sliders to fine-tune it, or tap a clean cheek to pick the skin tone yourself.</p>
+</div>
+
+<div id="modal" hidden>
+  <img id="shot" alt="Your snapshot">
+  <p>Press and hold the photo to save it.</p>
+  <button class="main" id="close">Close</button>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d',{willReadFrequently:true}),octx=ov.getContext('2d');
+const vid=document.createElement('video');vid.playsInline=true;vid.muted=true;
+let stream=null,facing='user',skin=[200,160,140],inited=false,manual=false,showOrig=false,frame=0;
+const P={pos:0,w:1,h:1,str:.85};
+
+function rd(){P.pos=$('#pos').value/100;P.w=$('#w').value/100;P.h=$('#h').value/100;P.str=$('#str').value/100}
+document.querySelectorAll('input[type=range]').forEach(e=>e.addEventListener('input',rd));rd();
+
+async function start(){
+  const msg=$('#msg');
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:720}},audio:false});
+    vid.srcObject=stream;await vid.play();
+    $('#start').hidden=true;loadAI();
+  }catch(e){
+    $('#start').hidden=false;$('#go').textContent='Try again';
+    msg.textContent=(e&&e.name==='NotAllowedError')
+      ?'Camera is blocked. Allow camera access, or open this page in your browser (Chrome or Safari) and try again.'
+      :'No camera found, or it is in use by another app.';
+  }
+}
+$('#go').onclick=start;
+$('#flip').onclick=()=>{facing=facing==='user'?'environment':'user';inited=false;if(stream)start()};
+
+const AI={on:false,busy:false,loading:false,last:0,miss:0,t:null,g:null,seg:null};
+function geom(W,H){
+  const u=Math.min(W,H),a=AI.g;
+  if(AI.t){if(!a)AI.g=Object.assign({},AI.t);else for(const k in AI.t)a[k]+=(AI.t[k]-a[k])*.25}else AI.g=null;
+  if(!AI.g)return{u,cx:W/2,cy:H*.45+u*(.235+P.pos),rx:u*.27*P.w,ry:u*.19*P.h,ang:0,ca:1,sa:0,sk:[[W/2-u*.17,H*.45],[W/2+u*.17,H*.45]]};
+  const s=AI.g,fw=s.fw*W,ca=Math.cos(s.an),sa=Math.sin(s.an),dx=-sa,dy=ca,off=fw*(.13+P.pos),ex=s.ex*W,ey=s.ey*H;
+  return{u,cx:s.x*W+dx*off,cy:s.y*H+dy*off,rx:fw*.5*P.w,ry:fw*.3*P.h,ang:s.an,ca,sa,
+    sk:[-1,1].map(q=>[ex+q*ca*fw*.27+dx*fw*.22,ey+q*sa*fw*.27+dy*fw*.22])};
+}
+
+function patch(x,y){
+  x=Math.max(4,Math.min(cv.width-5,x|0));y=Math.max(4,Math.min(cv.height-5,y|0));
+  const d=ctx.getImageData(x-4,y-4,9,9).data;let r=0,g=0,b=0;
+  for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2]}
+  const n=d.length/4;return[r/n,g/n,b/n];
+}
+function sampleSkin(g){
+  if(manual)return;
+  const a=patch(...g.sk[0]),b=patch(...g.sk[1]),m=[0,1,2].map(i=>(a[i]+b[i])/2);
+  if(!inited){skin=m;inited=true}else for(let i=0;i<3;i++)skin[i]+=(m[i]-skin[i])*.12;
+}
+
+function blur(A,w,h,r){
+  const T=new Float32Array(A.length),n=2*r+1,cl=(v,m)=>v<0?0:v>m?m:v;
+  for(let y=0;y<h;y++){const o=y*w;let s=0;for(let x=-r;x<=r;x++)s+=A[o+cl(x,w-1)];
+    for(let x=0;x<w;x++){T[o+x]=s/n;s+=A[o+cl(x+r+1,w-1)]-A[o+cl(x-r,w-1)]}}
+  for(let x=0;x<w;x++){let s=0;for(let y=-r;y<=r;y++)s+=T[cl(y,h-1)*w+x];
+    for(let y=0;y<h;y++){A[y*w+x]=s/n;s+=T[cl(y+r+1,h-1)*w+x]-T[cl(y-r,h-1)*w+x]}}
+}
+
+function shave(W,H,g){
+  const R=Math.max(g.rx,g.ry),x0=Math.max(0,Math.floor(g.cx-R)),y0=Math.max(0,Math.floor(g.cy-R)),
+        x1=Math.min(W,Math.ceil(g.cx+R)),y1=Math.min(H,Math.ceil(g.cy+R)),w=x1-x0,h=y1-y0;
+  if(w<8||h<8)return;
+  const img=ctx.getImageData(x0,y0,w,h),d=img.data,A=new Float32Array(w*h);
+  const sr=skin[0],sg=skin[1],sb=skin[2],sY=.299*sr+.587*sg+.114*sb,sRG=sr-sg;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const px=x0+x-g.cx,py=y0+y-g.cy,nx=(px*g.ca+py*g.sa)/g.rx,ny=(py*g.ca-px*g.sa)/g.ry,dd=Math.sqrt(nx*nx+ny*ny);
+    if(dd>=1)continue;
+    const i=(y*w+x)*4,r=d[i],gg=d[i+1],b=d[i+2],Y=.299*r+.587*gg+.114*b;
+    let a=Math.min(1,Math.max(0,((sY-Y)/sY-.1)/.22));            // dark = hair
+    a*=1-Math.min(1,Math.max(0,((r-gg)-sRG-6)/22));              // keep reddish lips
+    A[y*w+x]=a*Math.min(1,(1-dd)/.3);                            // soft edge
+  }
+  blur(A,w,h,3);blur(A,w,h,3);
+  const k=P.str*1.9;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const a=Math.min(1,A[y*w+x]*k);if(a<.01)continue;
+    const i=(y*w+x)*4,t=(y0+y-g.cy)/g.ry,sh=1-.07*Math.max(0,t),
+          n=((((x0+x)*73856093)^((y0+y)*19349663))&255)/255*6-3;
+    d[i]+=(sr*sh+n-d[i])*a;d[i+1]+=(sg*sh+n-d[i+1])*a;d[i+2]+=(sb*sh+n-d[i+2])*a;
+  }
+  ctx.putImageData(img,x0,y0);
+}
+
+function outline(W,H,g){
+  octx.clearRect(0,0,W,H);
+  if(!$('#guides').checked)return;
+  octx.lineWidth=2;octx.setLineDash([8,6]);
+  if(!AI.g){octx.strokeStyle='rgba(255,255,255,.75)';octx.beginPath();octx.ellipse(W/2,H*.45,g.u*.32,g.u*.42,0,0,7);octx.stroke()}
+  octx.strokeStyle='#6cc0e0';octx.beginPath();octx.ellipse(g.cx,g.cy,g.rx,g.ry,g.ang,0,7);octx.stroke();
+}
+
+function loop(){
+  if(stream&&vid.readyState>=2&&vid.videoWidth){
+    const vw=vid.videoWidth,vh=vid.videoHeight,W=Math.min(vw,560),H=Math.round(W*vh/vw);
+    if(cv.width!==W||cv.height!==H){cv.width=ov.width=W;cv.height=ov.height=H}
+    ctx.save();
+    if(facing==='user'){ctx.translate(W,0);ctx.scale(-1,1)}
+    ctx.drawImage(vid,0,0,W,H);ctx.restore();
+    const g=geom(W,H);
+    sampleSkin(g);
+    if(AI.on&&!AI.busy&&performance.now()-AI.last>150)snap(W,H);
+    if(!showOrig)shave(W,H,g);
+    outline(W,H,g);
+    if(++frame%10===0)$('#sw').style.background=`rgb(${skin.map(Math.round)})`;
+  }
+  requestAnimationFrame(loop);
+}
+async function loadAI(){
+  if(AI.loading)return;AI.loading=true;
+  const st=$('#ai');st.hidden=false;st.textContent='Loading face AI from Hugging Face. The first time can take a minute.';
+  try{
+    const {pipeline,env}=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.14.0');
+    env.allowLocalModels=false;env.backends.onnx.wasm.proxy=true;
+    AI.seg=await pipeline('image-segmentation','jonathandinu/face-parsing',
+      {progress_callback:q=>{if(q.status==='progress')st.textContent='Loading face AI: '+Math.round(q.progress)+'%'}});
+    AI.on=true;st.textContent='Face AI is on and tracking your face.';
+  }catch(e){st.textContent='Face AI could not load here. It needs internet and a normal website, so open this file from your own hosting. Manual fit still works.'}
+}
+const sc=document.createElement('canvas');
+function snap(W,H){AI.busy=true;AI.last=performance.now();sc.width=384;sc.height=Math.round(384*H/W);sc.getContext('2d').drawImage(cv,0,0,sc.width,sc.height);runAI()}
+async function runAI(){
+  try{
+    const blob=await new Promise(r=>sc.toBlob(r,'image/jpeg',.85)),url=URL.createObjectURL(blob);
+    const out=await AI.seg(url);URL.revokeObjectURL(url);
+    const m={};out.forEach(o=>m[o.label]=o.mask);
+    const cen=ns=>{let sx=0,sy=0,n=0,w=1,h=1;
+      ns.forEach(k=>{const mk=m[k];if(!mk)return;w=mk.width;h=mk.height;const d=mk.data;
+        for(let i=0;i<d.length;i++)if(d[i]>127){sx+=i%w;sy+=(i/w)|0;n++}});
+      return n>25?{x:sx/n,y:sy/n,w,h}:null};
+    let le=cen(['l_eye']),re=cen(['r_eye']);const lp=cen(['u_lip','l_lip']);
+    if(le&&re&&lp){
+      if(le.x>re.x)[le,re]=[re,le];
+      const w=le.w,h=le.h,dx=re.x-le.x,dy=re.y-le.y,dist=Math.hypot(dx,dy);
+      if(dist>w*.04)AI.t={x:lp.x/w,y:lp.y/h,ex:(le.x+re.x)/2/w,ey:(le.y+re.y)/2/h,fw:2.25*dist/w,an:Math.atan2(dy,dx)};
+      AI.miss=0;
+    }else if(++AI.miss>4)AI.t=null;
+  }catch(e){AI.miss++}
+  AI.busy=false;
+}
+loop();
+
+cv.addEventListener('click',e=>{
+  if(!stream)return;
+  const r=cv.getBoundingClientRect();
+  skin=patch((e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height);
+  manual=true;$('#skinTxt').textContent='Skin tone: picked';$('#auto').hidden=false;
+});
+$('#auto').onclick=()=>{manual=false;inited=false;$('#skinTxt').textContent='Skin tone: auto';$('#auto').hidden=true};
+
+const cmp=$('#cmp'),on=()=>{showOrig=true},off=()=>{showOrig=false};
+cmp.addEventListener('pointerdown',on);
+['pointerup','pointerleave','pointercancel'].forEach(t=>cmp.addEventListener(t,off));
+cmp.addEventListener('contextmenu',e=>e.preventDefault());
+
+$('#snap').onclick=()=>{if(!stream)return;$('#shot').src=cv.toDataURL('image/jpeg',.92);$('#modal').hidden=false};
+$('#close').onclick=()=>{$('#modal').hidden=true};
+</script>
+</body>
+</html>
